@@ -487,8 +487,7 @@ export default function DataBarangPage() {
         return;
       }
 
-      await apiPost(`/api/placements`, {
-        equipment_id: selected.equipment_id,
+      await apiPost(`/api/equipment/${selected.equipment_id}/move`, {
         to_slot_id: Number(mvSlotId),
         status_after: mvStatusAfter && mvStatusAfter !== "(none)" ? mvStatusAfter : null,
         description: mvDesc || null,
