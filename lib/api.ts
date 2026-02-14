@@ -47,7 +47,7 @@ async function readJsonSafe(res: Response) {
 
 async function getServerCookieHeader(): Promise<string> {
   const { cookies } = await import("next/headers");
-  const all = cookies().getAll();
+  const all = (await cookies()).getAll();
   if (!all.length) return "";
   return all.map((c) => `${c.name}=${c.value}`).join("; ");
 }
