@@ -3,7 +3,8 @@
 
 import { toast } from "sonner";
 
-const API_URL = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5000";
+// In production, use relative /api path. In dev, can use localhost:5000
+const API_URL = process.env.NEXT_PUBLIC_API_BASE || "/api";
 
 export type ApiFetchOptions = RequestInit & {
   silent401?: boolean;
