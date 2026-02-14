@@ -1,26 +1,247 @@
 @import "tailwindcss";
+/* @import "tw-animate-css"; */
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   SHADCN TOKENS (SOURCE OF TRUTH)
+   - Gunakan variabel ini untuk semua komponen shadcn/ui
+   - Jangan bikin token lain seperti --bg/--panel untuk warna utama
+   ============================================================ */
+:root{
+  /* base */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+
+  /* surfaces */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+
+  /* brand */
+  --primary: oklch(0.48 0.20 255);          /* biru enterprise */
+  --primary-foreground: oklch(0.985 0 0);
+
+  /* neutrals */
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+
+  --destructive: oklch(0.577 0.245 27.325);
+
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.68 0.10 255);
+
+  /* radius */
+  --radius: 0.75rem;
+
+  /* optional chart */
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
 }
 
+/* Dark tokens */
+.dark{
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+
+  --primary: oklch(0.72 0.16 255);
+  --primary-foreground: oklch(0.205 0 0);
+
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+}
+
+/* ============================================================
+   Theme inline mapping (tailwind v4 style)
+   ============================================================ */
 @theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ============================================================
+   Base layer (shadcn default)
+   ============================================================ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
   }
 }
 
-body {
+/* ============================================================
+   Enterprise background (halus, tidak ganggu shadcn)
+   - Dipakai hanya untuk mode terang agar terlihat "kantor"
+   ============================================================ */
+@layer base {
+  :root body{
+    background:
+      radial-gradient(900px 600px at 20% 0%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 55%),
+      radial-gradient(800px 520px at 100% 0%, color-mix(in oklch, var(--primary) 10%, transparent), transparent 60%),
+      var(--background);
+  }
+
+  .dark body{
+    background: var(--background);
+  }
+}
+
+/* ============================================================
+   Small utilities (optional) - aman dipakai di page kamu
+   ============================================================ */
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+}
+
+:root{
+  --sidebar-w: 280px;
+  --topbar-h: 72px;
+  
+}
+
+/* Root wrapper */
+.appRoot{
+  min-height: 100vh;
+}
+
+/* FIXED sidebar */
+.appSidebar{
+  position: fixed;
+  inset: 0 auto 0 0;            /* top right bottom left */
+  width: var(--sidebar-w);
+  height: 100vh;
+  z-index: 40;
+
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  border-right: 1px solid var(--border);
+
+  overflow: hidden;             /* biar rapih */
+}
+
+/* Isi sidebar scroll sendiri */
+.appSidebar > *{
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Main area starts AFTER sidebar */
+.appMain{
+  margin-left: var(--sidebar-w);
+  min-height: 100vh;
+}
+
+/* FIXED topbar (mulai setelah sidebar) */
+.appTopbar{
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  height: var(--topbar-h);
+  z-index: 50;
+
+  background: color-mix(in oklch, var(--background) 92%, transparent);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+
+/* CONTENT */
+.appContent{
+  padding: 24px;
+  padding-top: calc(var(--topbar-h) + 24px);
+  min-height: 100vh;
+}
+
+/* OPTIONAL: biar content ga kepentok tepi layar besar */
+@media (min-width: 1280px){
+  .appContent{
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+
+/* TABLET: sidebar jadi icon-only (opsional) */
+@media (max-width: 1024px){
+  :root{ --sidebar-w: 88px; }
+}
+
+/* MOBILE: sembunyikan sidebar (nanti bisa diganti drawer) */
+@media (max-width: 768px){
+  :root{ --sidebar-w: 0px; }
+
+  .appSidebar{ display: none; }
+  .appMain{ margin-left: 0; }
+  .appTopbar{ left: 0; }
+
+  .appContent{
+    padding: 16px;
+    padding-top: calc(var(--topbar-h) + 16px);
+  }
 }
