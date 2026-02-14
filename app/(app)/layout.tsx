@@ -6,7 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import { Toaster } from "sonner";
 
-const API_URL = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5000";
+// Use relative path for API calls
 
 type MeResponse = {
   user?: {
@@ -26,7 +26,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     async function checkSession() {
       try {
-        const res = await fetch(`${API_URL}/api/auth/me`, {
+        const res = await fetch(`/api/auth/me`, {
           method: "GET",
           credentials: "include",
           cache: "no-store",

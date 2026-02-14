@@ -55,14 +55,26 @@ export async function POST(request: NextRequest) {
       [user.user_id]
     );
 
-    return NextResponse.json({
-      user: {
-        user_id: user.user_id,
-        username: user.username,
-        full_name: user.full_name,
-        role: user.role,
-      },
-    }, { headers: corsHeaders });
+    const userData = {
+      user_id: user.user_id,
+      username: user.username,
+      full_name: user.full_name,
+      role: user.role,
+    };
+
+    // Create response with session cookie
+    const response = NextResponse.json({ user: userData }, { headers: corsHeaders });
+    
+    // Set session cookie (httpOnly for security)
+    response.cookies.set("session", JSON.stringify(userData), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    return response;
   } catch (e) {
     console.error("Login error:", e);
     return NextResponse.json(
