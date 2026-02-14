@@ -20,21 +20,21 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { warehouse_code, warehouse_name } = body;
+    const { warehouse_code, warehouse_name, address, capacity } = body;
     
     if (!warehouse_code || !warehouse_name) {
       return NextResponse.json(
-        { error: "Invalid input" }, 
+        { error: "warehouse_code and warehouse_name required" }, 
         { status: 400, headers: corsHeaders }
       );
     }
     
     const db = getDb();
-    await db.query(
-      sql("INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES (?, ?)"),
-      [warehouse_code, warehouse_name]
+    const result = await db.query(
+      sql("INSERT INTO warehouses (warehouse_code, warehouse_name, address, capacity) VALUES (?, ?, ?, ?) RETURNING *"),
+      [warehouse_code, warehouse_name, address || null, capacity || null]
     );
-    return NextResponse.json({ ok: true }, { status: 201, headers: corsHeaders });
+    return NextResponse.json(result.rows[0], { status: 201, headers: corsHeaders });
   } catch (e) {
     console.error("Warehouse create error:", e);
     return NextResponse.json(

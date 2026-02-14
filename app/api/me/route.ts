@@ -3,6 +3,7 @@ import { getDb, sql, corsHeaders } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+// Alias for /api/auth/me
 export async function GET(request: NextRequest) {
   try {
     const sessionCookie = request.cookies.get("session");
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     const user = JSON.parse(sessionCookie.value);
-    return NextResponse.json({ user }, { headers: corsHeaders });
+    return NextResponse.json(user, { headers: corsHeaders });
   } catch {
     return NextResponse.json({ user: null }, { headers: corsHeaders });
   }
@@ -64,8 +65,8 @@ export async function PATCH(request: NextRequest) {
 
     const updatedUser = result.rows[0];
 
-    // Update session cookie with new data
-    const response = NextResponse.json({ user: updatedUser }, { headers: corsHeaders });
+    // Update session cookie
+    const response = NextResponse.json(updatedUser, { headers: corsHeaders });
     response.cookies.set("session", JSON.stringify(updatedUser), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -76,7 +77,7 @@ export async function PATCH(request: NextRequest) {
 
     return response;
   } catch (e) {
-    console.error("PATCH /api/auth/me error:", e);
+    console.error("PATCH /api/me error:", e);
     return NextResponse.json(
       { error: (e as Error).message },
       { status: 500, headers: corsHeaders }

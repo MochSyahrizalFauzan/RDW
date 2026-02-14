@@ -3,15 +3,32 @@ import { getDb, sql, corsHeaders } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const warehouseId = searchParams.get("warehouse_id");
+
     const db = getDb();
-    const result = await db.query("SELECT * FROM equipment_classes ORDER BY class_code");
+    let query = `
+      SELECT r.*, w.warehouse_code, w.warehouse_name
+      FROM racks r
+      LEFT JOIN warehouses w ON r.warehouse_id = w.warehouse_id
+    `;
+    const params: any[] = [];
+
+    if (warehouseId) {
+      query += ` WHERE r.warehouse_id = $1`;
+      params.push(warehouseId);
+    }
+
+    query += ` ORDER BY r.rack_code`;
+
+    const result = await db.query(query, params);
     return NextResponse.json(result.rows, { headers: corsHeaders });
   } catch (e) {
-    console.error("Classes error:", e);
+    console.error("Racks GET error:", e);
     return NextResponse.json(
-      { error: (e as Error).message }, 
+      { error: (e as Error).message },
       { status: 500, headers: corsHeaders }
     );
   }
@@ -20,11 +37,11 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { class_code, class_name, description } = body;
+    const { warehouse_id, rack_code, zone, capacity } = body;
 
-    if (!class_code || !class_name) {
+    if (!warehouse_id || !rack_code) {
       return NextResponse.json(
-        { error: "class_code and class_name required" },
+        { error: "warehouse_id and rack_code required" },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -32,16 +49,16 @@ export async function POST(request: NextRequest) {
     const db = getDb();
     const result = await db.query(
       sql(`
-        INSERT INTO equipment_classes (class_code, class_name, description)
-        VALUES (?, ?, ?)
+        INSERT INTO racks (warehouse_id, rack_code, zone, capacity)
+        VALUES (?, ?, ?, ?)
         RETURNING *
       `),
-      [class_code, class_name, description || null]
+      [warehouse_id, rack_code, zone || null, capacity || null]
     );
 
     return NextResponse.json(result.rows[0], { status: 201, headers: corsHeaders });
   } catch (e) {
-    console.error("Classes POST error:", e);
+    console.error("Racks POST error:", e);
     return NextResponse.json(
       { error: (e as Error).message },
       { status: 500, headers: corsHeaders }
