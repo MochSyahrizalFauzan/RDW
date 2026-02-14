@@ -1,11 +1,8 @@
-import mysql from "mysql2/promise";
+// lib/db.ts - DEPRECATED
+// Frontend TIDAK boleh connect langsung ke database
+// Gunakan API di backend (lib/api.ts untuk fetch ke backend API)
+// 
+// Backend database config ada di: backend/server.js
 
-export const db = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  port: Number(process.env.DB_PORT || 3306),
-  waitForConnections: true,
-  connectionLimit: 10,
-});
+export const db = null; // Not used in frontend
+

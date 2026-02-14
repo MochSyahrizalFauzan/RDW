@@ -66,6 +66,7 @@ const db = new Pool({
   database: process.env.DB_NAME || "sistema_penempatan_rdw",
   port: Number(process.env.DB_PORT || 5432),
   max: 10,
+  ssl: { rejectUnauthorized: false }, // Neon requires SSL
 });
 
 // ============================================================

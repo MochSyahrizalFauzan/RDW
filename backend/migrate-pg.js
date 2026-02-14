@@ -19,6 +19,7 @@ const pool = new Pool({
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
   port: Number(process.env.DB_PORT || 5432),
+  ssl: { rejectUnauthorized: false }, // Neon requires SSL
 });
 
 async function migrate() {
