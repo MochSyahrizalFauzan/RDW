@@ -2,7 +2,7 @@
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
-const mysql = require("mysql2/promise");
+const { Pool } = require("pg");
 const session = require("express-session");
 const bcrypt = require("bcrypt");
 
@@ -57,17 +57,15 @@ app.use(
 );
 
 // ============================================================
-// DB POOL
+// DB POOL (PostgreSQL)
 // ============================================================
-const db = mysql.createPool({
+const db = new Pool({
   host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
+  user: process.env.DB_USER || "postgres",
   password: process.env.DB_PASS || "",
-  database: process.env.DB_NAME || "sistem_penempatan_rdw",
-  port: Number(process.env.DB_PORT || 3306),
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+  database: process.env.DB_NAME || "sistema_penempatan_rdw",
+  port: Number(process.env.DB_PORT || 5432),
+  max: 10,
 });
 
 // ============================================================
@@ -79,8 +77,18 @@ function ok(res, data) {
 function fail(res, message = "Server error", status = 500, extra = {}) {
   return res.status(status).json({ message, ...extra });
 }
+
+// Helper untuk convert ? ke $1, $2, etc (PostgreSQL style)
+function convertSql(sql) {
+  let counter = 0;
+  return sql.replace(/\?/g, () => `$${++counter}`);
+}
+
 async function q(sql, params = []) {
-  return db.query(sql, params);
+  const convertedSql = convertSql(sql);
+  const result = await db.query(convertedSql, params);
+  // Return format kompatibel dengan mysql2: [rows, fields]
+  return [result.rows, result.fields];
 }
 
 // ============================================================
@@ -935,37 +943,36 @@ app.delete("/api/equipment/:id", requireRoles(["admin"]), async (req, res) => {
 // PLACEMENTS (move equipment + log history)
 // ============================================================
 app.post("/api/placements", requireRoles(["admin"]), async (req, res) => {
-  const conn = await db.getConnection();
+  const client = await db.connect();
   const performed_by = req.user?.user_id ?? null;
   try {
     const equipment_id = Number(req.body.equipment_id);
     const to_slot_id = req.body.to_slot_id ? Number(req.body.to_slot_id) : null;
     const status_after = req.body.status_after ?? null;
-    const performed_by = req.user?.user_id ?? null;
     const description = req.body.description ?? null;
 
     if (!equipment_id) return fail(res, "equipment_id wajib", 400);
 
-    await conn.beginTransaction();
+    await client.query("BEGIN");
 
-    const [prevRows] = await conn.query(
-      `SELECT equipment_id, current_slot_id, readiness_status FROM equipment WHERE equipment_id = ?`,
+    const prevResult = await client.query(
+      convertSql(`SELECT equipment_id, current_slot_id, readiness_status FROM equipment WHERE equipment_id = ?`),
       [equipment_id]
     );
-
-    const prev = prevRows?.[0];
+    const prev = prevResult.rows?.[0];
+    
     if (!prev) {
-      await conn.rollback();
+      await client.query("ROLLBACK");
       return fail(res, "Barang tidak ditemukan", 404);
     }
 
     if (to_slot_id) {
-      const [slotRows] = await conn.query(
-        `SELECT slot_id FROM slots WHERE slot_id = ?`,
+      const slotResult = await client.query(
+        convertSql(`SELECT slot_id FROM slots WHERE slot_id = ?`),
         [to_slot_id]
       );
-      if (!slotRows?.length) {
-        await conn.rollback();
+      if (!slotResult.rows?.length) {
+        await client.query("ROLLBACK");
         return fail(res, "Slot tujuan tidak valid", 400);
       }
     }
@@ -973,46 +980,36 @@ app.post("/api/placements", requireRoles(["admin"]), async (req, res) => {
     const from_slot_id = prev.current_slot_id ?? null;
     const status_before = prev.readiness_status ?? null;
 
-    const setParts = ["current_slot_id = ?"];
+    const setParts = ["current_slot_id = $1"];
     const setVals = [to_slot_id];
 
     if (status_after) {
-      setParts.push("readiness_status = ?");
+      setParts.push(`readiness_status = $${setVals.length + 1}`);
       setVals.push(status_after);
     }
 
     setVals.push(equipment_id);
 
-    await conn.query(
-      `UPDATE equipment SET ${setParts.join(", ")} WHERE equipment_id = ?`,
-      setVals
+    const updateSql = `UPDATE equipment SET ${setParts.join(", ")} WHERE equipment_id = $${setVals.length}`;
+    await client.query(updateSql, setVals);
+
+    await client.query(
+      convertSql(`
+        INSERT INTO placement_history
+          (equipment_id, from_slot_id, to_slot_id, status_before, status_after, description, performed_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `),
+      [equipment_id, from_slot_id, to_slot_id, status_before, status_after, description, performed_by]
     );
 
-    await conn.query(
-      `
-      INSERT INTO placement_history
-        (equipment_id, from_slot_id, to_slot_id, status_before, status_after, description, performed_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      `,
-      [
-        equipment_id,
-        from_slot_id,
-        to_slot_id,
-        status_before,
-        status_after,
-        description,
-        performed_by,
-      ]
-    );
-
-    await conn.commit();
+    await client.query("COMMIT");
     return res.status(201).json({ message: "Penempatan berhasil disimpan" });
   } catch (e) {
     console.error("PLACEMENTS ERROR:", e);
-    await conn.rollback();
+    await client.query("ROLLBACK");
     return fail(res, "Gagal simpan penempatan");
   } finally {
-    conn.release();
+    client.release();
   }
 });
 
