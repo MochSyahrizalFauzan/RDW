@@ -3,8 +3,8 @@
 
 import { toast } from "sonner";
 
-// In production, use relative /api path. In dev, can use localhost:5000
-const API_URL = process.env.NEXT_PUBLIC_API_BASE || "/api";
+// Paths already include /api prefix, so API_URL should be empty
+const API_URL = process.env.NEXT_PUBLIC_API_BASE || "";
 
 export type ApiFetchOptions = RequestInit & {
   silent401?: boolean;
