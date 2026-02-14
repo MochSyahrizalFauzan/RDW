@@ -1,14 +1,4 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "env": [
-    "DB_HOST",
-    "DB_PORT",
-    "DB_USER",
-    "DB_PASS",
-    "DB_NAME",
-    "FRONTEND_ORIGIN",
-    "SESSION_SECRET",
-    "NODE_ENV"
-  ]
+  "outputDirectory": ".next"
 }
