@@ -59,6 +59,13 @@ app.use(
 // ============================================================
 // DATABASE (PostgreSQL / Neon)
 // ============================================================
+console.log("🔌 Database Config:", {
+  host: process.env.DB_HOST ? process.env.DB_HOST.substring(0, 20) + "..." : "NOT SET",
+  user: process.env.DB_USER || "NOT SET",
+  database: process.env.DB_NAME || "NOT SET",
+  port: process.env.DB_PORT || "NOT SET",
+});
+
 const db = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -68,6 +75,11 @@ const db = new Pool({
   max: 5,
   ssl: { rejectUnauthorized: false },
 });
+
+db.on("error", (err) => {
+  console.error("❌ Database Pool Error:", err);
+});
+
 
 // ============================================================
 // HELPERS
