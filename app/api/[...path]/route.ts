@@ -2,29 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
 import bcrypt from "bcrypt";
 
-// Database connection
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT) || 5432,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  max: 3,
-  ssl: { rejectUnauthorized: false },
-});
-
-// Helper: Convert MySQL ? to PostgreSQL $n
-function sql(query: string): string {
-  let i = 0;
-  return query.replace(/\?/g, () => `$${++i}`);
-}
-
 // CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
+
+// Database connection - lazy initialization
+let pool: Pool | null = null;
+
+function getPool(): Pool {
+  if (!pool) {
+    pool = new Pool({
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT) || 5432,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASS,
+      database: process.env.DB_NAME,
+      max: 3,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+  return pool;
+}
+
+// Helper: Convert MySQL ? to PostgreSQL $n
+function sql(query: string): string {
+  let i = 0;
+  return query.replace(/\?/g, () => `$${++i}`);
+}
 
 // OPTIONS handler for CORS preflight
 export async function OPTIONS() {
@@ -40,9 +47,15 @@ export async function GET(
   const route = "/" + path.join("/");
 
   try {
-    // Health check
+    // Simple ping (no DB)
+    if (route === "/ping") {
+      return NextResponse.json({ ok: true, route }, { headers: corsHeaders });
+    }
+
+    // Health check with DB
     if (route === "/health") {
-      const result = await pool.query("SELECT NOW()");
+      const db = getPool();
+      const result = await db.query("SELECT NOW()");
       return NextResponse.json({ ok: true, time: result.rows[0] }, { headers: corsHeaders });
     }
 
@@ -53,7 +66,8 @@ export async function GET(
 
     // Dashboard
     if (route === "/dashboard") {
-      const result = await pool.query(`
+      const db = getPool();
+      const result = await db.query(`
         SELECT 
           COUNT(*) AS total,
           SUM(CASE WHEN readiness_status='Ready' THEN 1 ELSE 0 END) AS ready,
@@ -69,25 +83,29 @@ export async function GET(
 
     // Classes
     if (route === "/classes") {
-      const result = await pool.query("SELECT * FROM classes ORDER BY class_code");
+      const db = getPool();
+      const result = await db.query("SELECT * FROM classes ORDER BY class_code");
       return NextResponse.json(result.rows, { headers: corsHeaders });
     }
 
     // Warehouses
     if (route === "/warehouses") {
-      const result = await pool.query("SELECT * FROM warehouses ORDER BY warehouse_code");
+      const db = getPool();
+      const result = await db.query("SELECT * FROM warehouses ORDER BY warehouse_code");
       return NextResponse.json(result.rows, { headers: corsHeaders });
     }
 
     // Equipment
     if (route === "/equipment") {
-      const result = await pool.query("SELECT * FROM equipment ORDER BY equipment_id DESC LIMIT 50");
+      const db = getPool();
+      const result = await db.query("SELECT * FROM equipment ORDER BY equipment_id DESC LIMIT 50");
       return NextResponse.json(result.rows, { headers: corsHeaders });
     }
 
     // Slots
     if (route === "/slots") {
-      const result = await pool.query(`
+      const db = getPool();
+      const result = await db.query(`
         SELECT s.*, r.rack_code, w.warehouse_code 
         FROM slots s 
         JOIN racks r ON r.rack_id = s.rack_id 
@@ -97,9 +115,9 @@ export async function GET(
       return NextResponse.json(result.rows, { headers: corsHeaders });
     }
 
-    return NextResponse.json({ error: "Not found" }, { status: 404, headers: corsHeaders });
+    return NextResponse.json({ error: "Not found", route }, { status: 404, headers: corsHeaders });
   } catch (e) {
-    console.error("API Error:", e);
+    console.error("API GET Error:", e);
     return NextResponse.json({ error: (e as Error).message }, { status: 500, headers: corsHeaders });
   }
 }
@@ -122,7 +140,8 @@ export async function POST(
         return NextResponse.json({ error: "Missing input" }, { status: 400, headers: corsHeaders });
       }
 
-      const result = await pool.query(sql("SELECT * FROM users WHERE username = ?"), [username]);
+      const db = getPool();
+      const result = await db.query(sql("SELECT * FROM users WHERE username = ?"), [username]);
       const user = result.rows[0];
 
       if (!user) {
@@ -140,7 +159,7 @@ export async function POST(
         return NextResponse.json({ error: "Invalid credentials" }, { status: 401, headers: corsHeaders });
       }
 
-      await pool.query(sql("UPDATE users SET last_login_at = NOW() WHERE user_id = ?"), [user.user_id]);
+      await db.query(sql("UPDATE users SET last_login_at = NOW() WHERE user_id = ?"), [user.user_id]);
 
       return NextResponse.json({
         user: {
@@ -163,7 +182,8 @@ export async function POST(
       if (!warehouse_code || !warehouse_name) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400, headers: corsHeaders });
       }
-      await pool.query(
+      const db = getPool();
+      await db.query(
         sql("INSERT INTO warehouses (warehouse_code, warehouse_name) VALUES (?, ?)"),
         [warehouse_code, warehouse_name]
       );
@@ -176,7 +196,8 @@ export async function POST(
       if (!equipment_code || !equipment_name || !class_id) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400, headers: corsHeaders });
       }
-      await pool.query(
+      const db = getPool();
+      await db.query(
         sql(`INSERT INTO equipment (equipment_code, equipment_name, class_id, readiness_status)
              VALUES (?, ?, ?, ?)`),
         [equipment_code, equipment_name, class_id, "Ready"]
@@ -184,9 +205,9 @@ export async function POST(
       return NextResponse.json({ ok: true }, { status: 201, headers: corsHeaders });
     }
 
-    return NextResponse.json({ error: "Not found" }, { status: 404, headers: corsHeaders });
+    return NextResponse.json({ error: "Not found", route }, { status: 404, headers: corsHeaders });
   } catch (e) {
-    console.error("API Error:", e);
+    console.error("API POST Error:", e);
     return NextResponse.json({ error: (e as Error).message }, { status: 500, headers: corsHeaders });
   }
 }
