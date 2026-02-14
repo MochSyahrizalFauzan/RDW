@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, { params }: Params) {
                r.rack_code, r.zone,
                w.warehouse_code, w.warehouse_name
         FROM equipment e
-        LEFT JOIN equipment_classes c ON e.class_id = c.class_id
+        LEFT JOIN classes c ON e.class_id = c.class_id
         LEFT JOIN slots s ON e.current_slot_id = s.slot_id
         LEFT JOIN racks r ON s.rack_id = r.rack_id
         LEFT JOIN warehouses w ON r.warehouse_id = w.warehouse_id
@@ -100,12 +100,6 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const db = getDb();
-
-    // Clear slot reference first
-    await db.query(
-      sql("UPDATE slots SET equipment_id = NULL WHERE equipment_id = ?"),
-      [id]
-    );
 
     const result = await db.query(
       sql("DELETE FROM equipment WHERE equipment_id = ? RETURNING equipment_id"),

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     const statusBefore = equipment.readiness_status;
     const newStatus = status_after || statusBefore;
 
-    // Check target slot is available
+    // Check target slot exists
     const slotResult = await db.query(
       sql("SELECT * FROM slots WHERE slot_id = ?"),
       [to_slot_id]
@@ -49,29 +49,19 @@ export async function POST(request: NextRequest, { params }: Params) {
       );
     }
 
-    const targetSlot = slotResult.rows[0];
-    if (targetSlot.equipment_id && targetSlot.equipment_id !== parseInt(id)) {
+    // Check if target slot is occupied by another equipment
+    const occupiedResult = await db.query(
+      sql("SELECT equipment_id FROM equipment WHERE current_slot_id = ? AND equipment_id != ?"),
+      [to_slot_id, id]
+    );
+    if (occupiedResult.rows.length > 0) {
       return NextResponse.json(
         { error: "Target slot is occupied" },
         { status: 409, headers: corsHeaders }
       );
     }
 
-    // Clear old slot
-    if (fromSlotId) {
-      await db.query(
-        sql("UPDATE slots SET equipment_id = NULL WHERE slot_id = ?"),
-        [fromSlotId]
-      );
-    }
-
-    // Update new slot
-    await db.query(
-      sql("UPDATE slots SET equipment_id = ? WHERE slot_id = ?"),
-      [id, to_slot_id]
-    );
-
-    // Update equipment
+    // Update equipment location and status
     await db.query(
       sql("UPDATE equipment SET current_slot_id = ?, readiness_status = ?, updated_at = NOW() WHERE equipment_id = ?"),
       [to_slot_id, newStatus, id]
@@ -80,7 +70,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     // Record history
     await db.query(
       sql(`
-        INSERT INTO equipment_history 
+        INSERT INTO placement_history 
         (equipment_id, from_slot_id, to_slot_id, status_before, status_after, description, performed_by)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `),

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const db = getDb();
-    const result = await db.query("SELECT * FROM equipment_classes ORDER BY class_code");
+    const result = await db.query("SELECT * FROM classes ORDER BY class_code");
     return NextResponse.json(result.rows, { headers: corsHeaders });
   } catch (e) {
     console.error("Classes error:", e);
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const db = getDb();
     const result = await db.query(
       sql(`
-        INSERT INTO equipment_classes (class_code, class_name, description)
+        INSERT INTO classes (class_code, class_name, description)
         VALUES (?, ?, ?)
         RETURNING *
       `),

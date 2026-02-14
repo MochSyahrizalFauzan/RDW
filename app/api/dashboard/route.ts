@@ -7,13 +7,14 @@ export async function GET() {
   try {
     const db = getDb();
 
-    // 1. Storage KPI - slot utilization
+    // 1. Storage KPI - slot utilization (join with equipment via current_slot_id)
     const storageKpi = await db.query(`
       SELECT 
-        COUNT(*) AS total_slots,
-        SUM(CASE WHEN equipment_id IS NOT NULL THEN 1 ELSE 0 END) AS occupied_slots,
-        SUM(CASE WHEN equipment_id IS NULL THEN 1 ELSE 0 END) AS empty_slots
-      FROM slots
+        COUNT(s.slot_id) AS total_slots,
+        COUNT(e.equipment_id) AS occupied_slots,
+        COUNT(s.slot_id) - COUNT(e.equipment_id) AS empty_slots
+      FROM slots s
+      LEFT JOIN equipment e ON s.slot_id = e.current_slot_id
     `);
     const skpi = storageKpi.rows[0] || { total_slots: 0, occupied_slots: 0, empty_slots: 0 };
     const totalSlots = parseInt(skpi.total_slots || "0");
@@ -30,14 +31,15 @@ export async function GET() {
         r.rack_code,
         r.zone,
         COUNT(s.slot_id) AS total_slots,
-        SUM(CASE WHEN s.equipment_id IS NOT NULL THEN 1 ELSE 0 END) AS occupied_slots
+        COUNT(e.equipment_id) AS occupied_slots
       FROM racks r
       JOIN warehouses w ON r.warehouse_id = w.warehouse_id
       LEFT JOIN slots s ON r.rack_id = s.rack_id
+      LEFT JOIN equipment e ON s.slot_id = e.current_slot_id
       GROUP BY w.warehouse_code, w.warehouse_name, r.rack_id, r.rack_code, r.zone
       HAVING COUNT(s.slot_id) > 0 
-        AND (SUM(CASE WHEN s.equipment_id IS NOT NULL THEN 1 ELSE 0 END)::float / COUNT(s.slot_id)::float) >= 0.85
-      ORDER BY (SUM(CASE WHEN s.equipment_id IS NOT NULL THEN 1 ELSE 0 END)::float / COUNT(s.slot_id)::float) DESC
+        AND (COUNT(e.equipment_id)::float / COUNT(s.slot_id)::float) >= 0.85
+      ORDER BY (COUNT(e.equipment_id)::float / COUNT(s.slot_id)::float) DESC
     `);
 
     const racksNearFullData = racksNearFull.rows.map((r: any) => ({
@@ -54,10 +56,11 @@ export async function GET() {
         w.warehouse_code,
         w.warehouse_name,
         COUNT(s.slot_id) AS total_slots,
-        SUM(CASE WHEN s.equipment_id IS NOT NULL THEN 1 ELSE 0 END) AS occupied_slots
+        COUNT(e.equipment_id) AS occupied_slots
       FROM warehouses w
       LEFT JOIN racks r ON w.warehouse_id = r.warehouse_id
       LEFT JOIN slots s ON r.rack_id = s.rack_id
+      LEFT JOIN equipment e ON s.slot_id = e.current_slot_id
       GROUP BY w.warehouse_id, w.warehouse_code, w.warehouse_name
       ORDER BY w.warehouse_code
     `);

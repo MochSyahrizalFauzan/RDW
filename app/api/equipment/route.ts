@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         w.warehouse_code,
         w.warehouse_name
       FROM equipment e
-      LEFT JOIN equipment_classes c ON e.class_id = c.class_id
+      LEFT JOIN classes c ON e.class_id = c.class_id
       LEFT JOIN slots s ON e.current_slot_id = s.slot_id
       LEFT JOIN racks r ON s.rack_id = r.rack_id
       LEFT JOIN warehouses w ON r.warehouse_id = w.warehouse_id
@@ -123,14 +123,6 @@ export async function POST(request: NextRequest) {
         current_slot_id || null
       ]
     );
-
-    // Update slot if assigned
-    if (current_slot_id) {
-      await db.query(
-        sql("UPDATE slots SET equipment_id = ? WHERE slot_id = ?"),
-        [result.rows[0].equipment_id, current_slot_id]
-      );
-    }
 
     return NextResponse.json(result.rows[0], { status: 201, headers: corsHeaders });
   } catch (e) {

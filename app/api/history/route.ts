@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     // Count total
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM equipment_history h
+      FROM placement_history h
       LEFT JOIN equipment e ON h.equipment_id = e.equipment_id
       LEFT JOIN slots from_slot ON h.from_slot_id = from_slot.slot_id
       LEFT JOIN slots to_slot ON h.to_slot_id = to_slot.slot_id
@@ -88,9 +88,9 @@ export async function GET(request: NextRequest) {
         to_wh.warehouse_name as to_wh_name,
         h.performed_by as performed_by_id,
         u.full_name as performed_by_name
-      FROM equipment_history h
+      FROM placement_history h
       LEFT JOIN equipment e ON h.equipment_id = e.equipment_id
-      LEFT JOIN equipment_classes c ON e.class_id = c.class_id
+      LEFT JOIN classes c ON e.class_id = c.class_id
       LEFT JOIN slots from_slot ON h.from_slot_id = from_slot.slot_id
       LEFT JOIN racks from_rack ON from_slot.rack_id = from_rack.rack_id
       LEFT JOIN warehouses from_wh ON from_rack.warehouse_id = from_wh.warehouse_id

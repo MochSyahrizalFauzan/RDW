@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       params.push(warehouseId);
     }
     if (available === "1") {
-      conditions.push(`s.equipment_id IS NULL`);
+      conditions.push(`e.equipment_id IS NULL`);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       FROM slots s 
       JOIN racks r ON r.rack_id = s.rack_id 
       JOIN warehouses w ON w.warehouse_id = r.warehouse_id 
-      LEFT JOIN equipment e ON s.equipment_id = e.equipment_id
+      LEFT JOIN equipment e ON s.slot_id = e.current_slot_id
       ${whereClause}
       ORDER BY w.warehouse_code, r.rack_code, s.slot_code
     `, params);
